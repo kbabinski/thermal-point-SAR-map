@@ -9,11 +9,15 @@
 close all;
 clear variables;
 clc;
-%% Read in image then convert to grayscale, then black and white
-I=imread ('whiteHotIR_2.JPG');
+%% Read in ALL data
+I=imread ('20170630_060313_751.JPG');
+imageInfo = imfinfo('20170630_060313_751.JPG');
+fileID = fopen('06302017_UMD1.gpx','r');
+
+%% Convert to grayscale then black and white
 %%Convert to grayscale
 Igray= rgb2gray(I);
-level = .9;
+level = .90;
 Ibinary = imbinarize (Igray, level);
 imshow (Ibinary);
 %Ibinary2 = imfill(Ibinary,'holes');
@@ -49,7 +53,7 @@ plot(boundary(:,2), boundary(:,1), 'g', 'LineWidth', 0.2)
 end
 %If/else statement to identify 
 A = bwarea (Ibinary);
-if (A > 100)
+if (A > 200)
 ID = 1;
 disp ('There is a point of interest in this image');
 else 
@@ -59,7 +63,7 @@ end
 
 %% Read in the time the photo was taken
 
-imageInfo = imfinfo('whiteHotIR_2.JPG');
+%imageinfo is read in at the beginning of the code and used here
 imageDate = imageInfo.FileModDate;
 % Image time needs to be changed to zulu time to correspond with GPS info
 imageDateLocal = datetime(imageDate,'TimeZone','America/New_York');
@@ -82,7 +86,7 @@ imageDateZuluFormat = datestr(imageDateLocal,formatOut);
 %    Date: 6/20/2017
 %**************************************************************************************/
 %clear all; close all; clc;
-fileID = fopen('badElf1.gpx','r');
+%fileID = fopen('badElf1.gpx','r');
 transpose_data = fopen('extracted_data.csv','wt');
 line = fgets(fileID);
 regex = '^<trkpt lat="(-?\d+\.\d+)" lon="(-?\d+\.\d+)"><ele>\d+\.\d+</ele><time>(\d{4}-\d{2}-\d{2})T(\d+:\d+:\d+).*$'
@@ -110,12 +114,14 @@ lat = table{rows, vars};
 vars2 = 'Lon';
 lon = table{rows, vars2};
 
+%geoshow (lat, lon);
 
 %% limLat = [min(Lat) max(Lat)];
-% 
-% tracks = gpxread('badElf1.gpx', 'Index', 1:2);
-% webmap('openstreetmap')
-% colors = {'cyan'};
-% wmline(tracks, 'Color', colors)
-% [latlim, lonlim] = geoquadline(tracks(1).Latitude, tracks(1).Longitude);
-% wmlimits(latlim, lonlim)
+
+webmap('Open Street Map');
+wmmarker(lat,lon);
+description = sprintf('%f<br>%f</br>', lat, lon);
+wmmarker(lat, lon, 'Description', description)
+ 
+
+
