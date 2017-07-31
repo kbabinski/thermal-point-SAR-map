@@ -12,14 +12,16 @@ clc;
 format long; format compact;
 %% Read in ALL data
 
-% The file form the Bad Elf GPS logger goes below
-fileID = fopen('06302017_UMD1.gpx','r');
+% The file form the Bad Elf GPS logger goes below. The file needs to be
+% part of the Matlab project folder
+fileID = fopen('2017-07-18T18-38-26Z.gpx','r');
 % The folder where the images are is referenced below with
 % " 'C:\Users\sherrita\Desktop\20170630_UMD1' " format
-myFolder = 'C:\Users\sherrita\Desktop\20170630_UMD1';
+myFolder = 'C:\Users\sherrita\Desktop\07182017_Leonardtown_Flight\revImages20170718';
 
 
-%% Read in all of the image files, write the images to an image array, binarize images, true/false POI, and write 'Time' of image and ID to tables
+%% Read in all of the image files, write the images to an image array, 
+    %binarize images, true/false POI, and write 'Time' of image and ID to tables
 
 % Check to make sure that folder actually exists.  Warn user if it doesn't.
 if ~isdir(myFolder)
@@ -39,7 +41,8 @@ for j = 1 : length(theFiles)
   Igray= rgb2gray(imageArray);
   level = .90;
   Ibinary = imbinarize (Igray, level);
-  %imshow (Ibinary);
+  %imshow (Ibinary); %Saves lots of processing time to have this commented
+  %out
   B = bwboundaries(Ibinary);
   A = bwarea (Ibinary);
     if (A > 100)
@@ -60,19 +63,23 @@ for j = 1 : length(theFiles)
     %into command window
     formatOut = 'HH:MM:SS';
     imageDateZuluFormat = datestr(imageDateLocal,formatOut);
-    tableA(j,:) = [imageDateZuluFormat]; %Times when each image was captured
-    tableB(j,:) = [ID]; %corresponding 'ID' for each image (1 = POI, 0 = no POI)
+    tableTime(j,:) = [imageDateZuluFormat]; %Times when each image was captured
+    tableID(j,:) = [ID]; %corresponding 'ID' for each image (1 = POI, 0 = no POI)
+    tableFileName(j,:) = [fullFileName];
   drawnow; % Force display to update immediately.
 end
 
-%% Concatenate tables with image 'Time' and 'ID'
+%% Concatenate tables with image info : 'Time','ID', and 'File_Name'
 
-str = cellstr(tableA);
-tableA1 = table(str)
-tableB1 = table(tableB);
-tableA1.Properties.VariableNames = {'Time'};
-tableB1.Properties.VariableNames = {'ID'};
-tableC = horzcat(tableA1, tableB1);
+str = cellstr(tableTime);
+str2 = cellstr(tableFileName);
+tableFileName = table(str2);
+tableTime = table(str);
+tableID = table(tableID);
+tableTime.Properties.VariableNames = {'Time'};
+tableID.Properties.VariableNames = {'ID'};
+tableFileName.Properties.VariableNames = {'File_Name'};
+tableC = horzcat(tableTime, tableID, tableFileName);
 
 %% Read in .gpx file and place necessary data into cells
 
@@ -99,12 +106,13 @@ fclose(transpose_data);
 table = readtable('extracted_data.csv');
 table.Properties.VariableNames = {'Lat' 'Lon' 'Date' 'Time'};
 
-%% Use a regular expression to pull the row out of a table that contains the same expression as variable imageDateZuluFormat
+%% Concatenate data table from GPS and data table from image array, common variable is Time
 
 collected_index = 0;
 for m = 1 : size(tableC)
     temp = tableC.Time(m);
     temp2 = tableC.ID(m);
+    temp3 = tableC.File_Name(m);
     Lia = ismember(table.Time, temp);
     RowIdx = find(Lia);
     if(not(isempty(RowIdx)))
@@ -118,23 +126,25 @@ for m = 1 : size(tableC)
         new_table{collected_index,2} = lon;
         new_table{collected_index,3} = temp;
         new_table{collected_index,4} = temp2;
+        new_table{collected_index,5} = temp3;
     end
 end 
 
-new_table = cell2table(new_table);
-toDelete = new_table.new_table4 == 0;
-new_table(toDelete,:) = [];
-new_table.Properties.VariableNames = {'Lat' 'Lon' 'Time' 'ID'};
+new_table = cell2table(new_table); %new_table it the concatenated table with all data
+toDelete = new_table.new_table4 == 0; 
+new_table(toDelete,:) = []; %Deletes table data that does not contain and point of interest
+new_table.Properties.VariableNames = {'Lat' 'Lon' 'Time' 'ID' 'File_Name'};
 
-%% limLat = [min(Lat) max(Lat)];
+
+%% Open ESRI web map. Display markers where there is a POI, creat hyperlink to view table
 
 latLonCounter = 0;
 webmap('Open Street Map');
 for d = 1: size(new_table)
-    wmmarker(new_table.Lat(d), new_table.Lon(d));
     latLonCounter = latLonCounter + 1;
-    %description = sprintf('%f<br>%f</br>', lat, lon);
-    %wmmarker(lat, lon, 'Description', description)
+    baseFileName2 = new_table.File_Name(d);
+    pleaseWork = char(baseFileName2);
+    description = sprintf('%f<br>%f</br><br>%s</br>',new_table.Lat(d), new_table.Lon(d), ['<a href=' pleaseWork ' target="_blank">Image</a>']);
+    name = 'Point of Interest';
+    wmmarker(new_table.Lat(d), new_table.Lon(d), 'Description', description, 'FeatureName', name);
 end
-
-
